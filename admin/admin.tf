@@ -23,10 +23,6 @@ resource "aws_iam_user" "general_user" {
   force_destroy = true
 }
 
-resource "aws_iam_access_key" "general_user_key" {
-  user = aws_iam_user.general_user.name
-}
-
 resource "aws_iam_user_policy" "general_policy" {
   name   = "general"
   user   = aws_iam_user.general_user.name
