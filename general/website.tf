@@ -6,10 +6,10 @@ terraform {
     }
   }
   backend "s3" {
-    profile = "default"
+    profile = "general"
     region  = "ca-central-1"
     bucket  = "adampickering-terraform"
-    key     = "terraform.state"
+    key     = "general.state"
   }
 }
 
