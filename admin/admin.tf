@@ -46,3 +46,12 @@ resource "aws_iam_user_policy" "general_policy" {
 }
 EOF
 }
+
+resource "aws_kms_key" "unicreds" {
+  description = "unicreds"
+}
+
+resource "aws_kms_alias" "unicreds" {
+  name = "alias/credstash"
+  target_key_id = aws_kms_key.unicreds.key_id
+}
