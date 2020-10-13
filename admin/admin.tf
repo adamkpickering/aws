@@ -32,35 +32,13 @@ resource "aws_iam_user_policy" "general_policy" {
   "Statement": [
     {
       "Effect": "Allow",
-      "Action": "*",
-      "Resource": "*"
-    },
-    {
-      "Effect": "Deny",
-      "Action": "Billing:*",
-      "Resource": "*"
-    },
-    {
-      "Effect": "Deny",
-      "Action": "iam:*",
-      "Resource": "*"
-    },
-    {
-      "Effect": "Deny",
       "Action": [
-        "sns:List*",
-        "sns:Check*",
-        "sns:Get*",
-        "sns:TagResource",
-        "sns:UntagResource",
-        "sns:Create*",
-        "sns:Confirm*",
-        "sns:Delete*",
-        "sns:Set*",
-        "sns:OptInPhoneNumber",
-        "sns:Subscribe*",
-        "sns:Unsubscribe",
-        "sns:*Permission"
+        "s3:*",
+        "ec2:*",
+        "route53:*",
+        "kms:*",
+        "dynamodb:*",
+        "sns:Publish"
       ],
       "Resource": "*"
     }
