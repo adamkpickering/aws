@@ -6,7 +6,7 @@ terraform {
     }
   }
   backend "s3" {
-    profile = "general"
+    profile = "default"
     region  = "ca-central-1"
     bucket  = "adampickering-terraform"
     key     = "general.state"
@@ -18,6 +18,22 @@ provider "aws" {
   region  = "ca-central-1"
 }
 
-resource "aws_route53_zone" "root_zone" {
+resource "aws_route53_zone" "root" {
   name = "adampickering.ca"
+}
+
+resource "aws_route53_record" "root" {
+  zone_id = aws_route53_zone.root.zone_id
+  name = "adampickering.ca"
+  type = "A"
+  ttl = "300"
+  records = ["108.173.251.186"]
+}
+
+resource "aws_route53_record" "www" {
+  zone_id = aws_route53_zone.root.zone_id
+  name = "www.adampickering.ca"
+  type = "A"
+  ttl = "300"
+  records = ["108.173.251.186"]
 }
