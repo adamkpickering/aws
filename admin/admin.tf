@@ -38,6 +38,8 @@ resource "aws_iam_user_policy" "general_policy" {
         "route53:*",
         "kms:*",
         "dynamodb:*",
+        "acm:*",
+        "cloudfront:*",
         "sns:Publish"
       ],
       "Resource": "*"
