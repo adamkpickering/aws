@@ -13,27 +13,135 @@ terraform {
   }
 }
 
+locals {
+  website_name = "adampickering.ca"
+}
+
 provider "aws" {
   profile = "default"
   region  = "ca-central-1"
 }
 
+provider "aws" {
+  alias   = "us-east-1"
+  profile = "default"
+  region  = "us-east-1"
+}
+
+
 resource "aws_route53_zone" "root" {
-  name = "adampickering.ca"
+  name = local.website_name
 }
 
 resource "aws_route53_record" "root" {
   zone_id = aws_route53_zone.root.zone_id
-  name = "adampickering.ca"
-  type = "A"
-  ttl = "300"
+  name    = local.website_name
+  type    = "A"
+  ttl     = "300"
   records = ["108.173.251.186"]
 }
 
 resource "aws_route53_record" "www" {
   zone_id = aws_route53_zone.root.zone_id
-  name = "www.adampickering.ca"
-  type = "A"
-  ttl = "300"
+  name    = "www.${local.website_name}"
+  type    = "A"
+  ttl     = "300"
   records = ["108.173.251.186"]
+}
+
+resource "aws_s3_bucket" "website" {
+  bucket        = local.website_name
+  force_destroy = true
+  acl           = "private"
+
+  website {
+    index_document = "index.html"
+  }
+}
+
+resource "aws_acm_certificate" "website" {
+  provider          = aws.us-east-1
+  domain_name       = "www.${local.website_name}"
+  validation_method = "DNS"
+}
+
+resource "aws_route53_record" "cert" {
+  zone_id = aws_route53_zone.root.zone_id
+  name    = aws_acm_certificate.website.domain_validation_options.0.resource_record_name
+  type    = aws_acm_certificate.website.domain_validation_options.0.resource_record_type
+  records = [aws_acm_certificate.website.domain_validation_options.0.resource_record_value]
+  ttl     = 60
+}
+
+resource "aws_acm_certificate_validation" "website" {
+  provider = aws.us-east-1
+  certificate_arn         = aws_acm_certificate.website.arn
+  validation_record_fqdns = [aws_route53_record.cert.fqdn]
+}
+
+resource "aws_cloudfront_origin_access_identity" "website" {
+  comment = "For ${local.website_name}"
+}
+
+data "aws_iam_policy_document" "website_s3_policy" {
+  statement {
+    actions   = ["s3:GetObject"]
+    resources = ["${aws_s3_bucket.website.arn}/*"]
+
+    principals {
+      type        = "AWS"
+      identifiers = [aws_cloudfront_origin_access_identity.website.iam_arn]
+    }
+  }
+}
+
+resource "aws_s3_bucket_policy" "website" {
+  bucket = aws_s3_bucket.website.id
+  policy = data.aws_iam_policy_document.website_s3_policy.json
+}
+
+resource "aws_cloudfront_distribution" "website" {
+  enabled         = true
+  is_ipv6_enabled = true
+  price_class     = "PriceClass_200"
+  http_version    = "http2"
+
+  origin {
+    domain_name = aws_s3_bucket.website.bucket_regional_domain_name
+    origin_id   = "origin-bucket-${aws_s3_bucket.website.id}"
+
+    s3_origin_config {
+      origin_access_identity = aws_cloudfront_origin_access_identity.website.cloudfront_access_identity_path
+    }
+  }
+
+  default_cache_behavior {
+    allowed_methods        = ["GET", "HEAD", "OPTIONS"]
+    cached_methods         = ["GET", "HEAD"]
+    target_origin_id       = "origin-bucket-${aws_s3_bucket.website.id}"
+    viewer_protocol_policy = "redirect-to-https"
+    min_ttl                = 0
+    default_ttl            = 3600
+    max_ttl                = 86400
+
+    forwarded_values {
+      query_string = false
+
+      cookies {
+        forward = "none"
+      }
+    }
+  }
+
+  restrictions {
+    geo_restriction {
+      restriction_type = "none"
+    }
+  }
+
+  viewer_certificate {
+    acm_certificate_arn      = aws_acm_certificate_validation.website.certificate_arn
+    minimum_protocol_version = "TLSv1"
+    ssl_support_method       = "sni-only"
+  }
 }
