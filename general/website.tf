@@ -15,6 +15,7 @@ terraform {
 
 locals {
   website_name = "adampickering.ca"
+  website_dir = "../../website/public"
 }
 
 provider "aws" {
@@ -28,6 +29,9 @@ provider "aws" {
   region  = "us-east-1"
 }
 
+
+
+# DNS CONFIG
 
 resource "aws_route53_zone" "root" {
   name = local.website_name
@@ -49,6 +53,10 @@ resource "aws_route53_record" "www" {
   records = ["108.173.251.186"]
 }
 
+
+
+# S3 BUCKET CONFIG
+
 resource "aws_s3_bucket" "website" {
   bucket        = local.website_name
   force_destroy = true
@@ -58,6 +66,18 @@ resource "aws_s3_bucket" "website" {
     index_document = "index.html"
   }
 }
+
+resource "aws_s3_bucket_object" "website_file" {
+  for_each = fileset(local.website_dir, "*")
+  bucket = aws_s3_bucket.website.id
+  key = each.key
+  source = "${local.website_dir}/${each.key}"
+  content_type = "text/html"
+}
+
+
+
+# ACM CERTIFICATE CONFIG
 
 resource "aws_acm_certificate" "website" {
   provider          = aws.us-east-1
@@ -78,6 +98,13 @@ resource "aws_acm_certificate_validation" "website" {
   certificate_arn         = aws_acm_certificate.website.arn
   validation_record_fqdns = [aws_route53_record.cert.fqdn]
 }
+
+
+
+# CLOUDFRONT CONFIG
+# An OAI (Origin Access Identity) is used to allow cloudfront access to the s3 bucket
+# while preventing other parties from accessing it. It is essentially a special
+# cloudfront user, to which we assign a policy which gives it access to the s3 bucket.
 
 resource "aws_cloudfront_origin_access_identity" "website" {
   comment = "For ${local.website_name}"
@@ -105,9 +132,10 @@ resource "aws_cloudfront_distribution" "website" {
   is_ipv6_enabled = true
   price_class     = "PriceClass_200"
   http_version    = "http2"
+  default_root_object = "index.html"
 
   origin {
-    domain_name = aws_s3_bucket.website.bucket_regional_domain_name
+    domain_name = aws_s3_bucket.website.bucket_domain_name
     origin_id   = "origin-bucket-${aws_s3_bucket.website.id}"
 
     s3_origin_config {
