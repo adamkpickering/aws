@@ -79,6 +79,7 @@ resource "aws_s3_bucket_object" "website_file_html" {
   key          = each.key
   source       = "${local.website_dir}/${each.key}"
   content_type = "text/html"
+  etag         = filemd5("${local.website_dir}/${each.key}")
 }
 
 resource "aws_s3_bucket_object" "website_file_css" {
@@ -87,6 +88,7 @@ resource "aws_s3_bucket_object" "website_file_css" {
   key          = each.key
   source       = "${local.website_dir}/${each.key}"
   content_type = "text/css"
+  etag         = filemd5("${local.website_dir}/${each.key}")
 }
 
 resource "aws_s3_bucket_object" "website_file_xml" {
@@ -95,6 +97,7 @@ resource "aws_s3_bucket_object" "website_file_xml" {
   key          = each.key
   source       = "${local.website_dir}/${each.key}"
   content_type = "text/xml"
+  etag         = filemd5("${local.website_dir}/${each.key}")
 }
 
 
@@ -164,7 +167,7 @@ resource "aws_cloudfront_distribution" "website" {
   price_class         = "PriceClass_200"
   http_version        = "http2"
   default_root_object = "index.html"
-  aliases = [local.website_name, "www.${local.website_name}"]
+  aliases             = [local.website_name, "www.${local.website_name}"]
 
   origin {
     domain_name = aws_s3_bucket.website.bucket_domain_name
